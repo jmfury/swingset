@@ -10,10 +10,13 @@ const { existsSync } = require('fsexists')
 const matter = require('gray-matter')
 const { getOptions } = require('loader-utils')
 const slugify = require('slugify')
+const unixify = require('unixify')
+const isWindows = process.platform === 'win32'
 
 module.exports = function swingsetComponentsLoader() {
   const { pluginOptions, webpackConfig } = getOptions(this)
 
+  const componentsRootGlobBase = pluginOptions.componentsRoot.split('*')[0]
   // Resolve components glob
   const allComponents = globby
     .sync(`${pluginOptions.componentsRoot}`, {
@@ -27,16 +30,32 @@ module.exports = function swingsetComponentsLoader() {
     allComponents,
     pluginOptions
   )
+  const componentFolderNames = usedComponents.map(
+    (component) => component.split(componentsRootGlobBase)[1]
+  )
+  console.log({ usedComponents, componentFolderNames })
+
+  const isWindows = process.platform === 'win32'
 
   // add components directory as a webpack dependency
-  this.addContextDependency(pluginOptions.componentsRoot.split('*')[0])
-  const componentsWithNames = formatComponentsWithNames(usedComponents)
+  this.addContextDependency(
+    path.normalize(
+      isWindows
+        ? pluginOptions.componentsRootSystemPath.split('*')[0]
+        : pluginOptions.componentsRoot.split('*')[0]
+    )
+  )
+  const componentsWithNames = formatComponentsWithNames(
+    componentFolderNames,
+    pluginOptions.componentsRootSystemPath
+  )
 
   // Resolve docs glob
   const allDocs = globby.sync(`${pluginOptions.docsRoot}`)
   const docsWithNames = formatDocsFilesWithNames(allDocs)
-
-  return generateMetadataFile(componentsWithNames, docsWithNames)
+  const meta = generateMetadataFile(componentsWithNames, docsWithNames)
+  console.log({ meta })
+  return meta
 }
 
 /**
@@ -93,10 +112,13 @@ function formatDocsFilesWithNames(docs) {
  * @param {string[]} components
  * @returns {import('./types').FormattedFileEntry[]}
  */
-function formatComponentsWithNames(components) {
+function formatComponentsWithNames(components, systemBasePath) {
   return components.map((componentDir) => {
+    const componentPath =
+      systemBasePath.replace('*', '') + (isWindows ? '' : '/') + componentDir
+    console.log({ componentPath })
     const docsFileContent = fs.readFileSync(
-      path.join(componentDir, 'docs.mdx'),
+      path.join(componentPath, 'docs.mdx'),
       'utf8'
     )
     const { data } = matter(docsFileContent)
@@ -107,7 +129,7 @@ function formatComponentsWithNames(components) {
     }
     return {
       name: data.componentName,
-      path: componentDir,
+      path: componentPath,
       slug: slugify(data.componentName, { lower: true }),
       data,
     }
@@ -138,7 +160,9 @@ function formatComponentsWithNames(components) {
  */
 function generateMetadataFile(components, docsFiles) {
   const imports = components.reduce((memo, component) => {
-    memo += `import * as ${component.name}Exports from '${component.path}'\n`
+    memo += `import * as ${component.name}Exports from '${unixify(
+      component.path
+    )}'\n`
     return memo
   }, '')
 
@@ -146,9 +170,9 @@ function generateMetadataFile(components, docsFiles) {
     // We can't just stringify here, because we need eg
     // src: Button, <<< Button NOT in quotes
     acc += `  '${component.name}': {
-      path: '${component.path}',
-      docsPath: '${path.join(component.path, 'docs.mdx')}',
-      propsPath: '${path.join(component.path, 'props.js')}',
+      path: '${unixify(component.path)}',
+      docsPath: '${unixify(path.join(component.path, 'docs.mdx'))}',
+      propsPath: '${unixify(path.join(component.path, 'props.js'))}',
       slug: '${component.slug}',
       exports: ${component.name}Exports,
       data: ${JSON.stringify(component.data, null, 2)}
