@@ -10,7 +10,6 @@ const { existsSync } = require('fsexists')
 const matter = require('gray-matter')
 const { getOptions } = require('loader-utils')
 const slugify = require('slugify')
-const unixify = require('unixify')
 const isWindows = process.platform === 'win32'
 
 module.exports = function swingsetComponentsLoader() {
@@ -33,9 +32,6 @@ module.exports = function swingsetComponentsLoader() {
   const componentFolderNames = usedComponents.map(
     (component) => component.split(componentsRootGlobBase)[1]
   )
-  console.log({ usedComponents, componentFolderNames })
-
-  const isWindows = process.platform === 'win32'
 
   // add components directory as a webpack dependency
   this.addContextDependency(
@@ -51,9 +47,7 @@ module.exports = function swingsetComponentsLoader() {
   // Resolve docs glob
   const allDocs = globby.sync(`${pluginOptions.docsRoot}`)
   const docsWithNames = formatDocsFilesWithNames(allDocs)
-  const meta = generateMetadataFile(componentsWithNames, docsWithNames)
-  console.log({ meta })
-  return meta
+  return generateMetadataFile(componentsWithNames, docsWithNames)
 }
 
 /**
@@ -114,7 +108,6 @@ function formatComponentsWithNames(components, systemBasePath) {
   return components.map((componentDir) => {
     const componentPath =
       systemBasePath.replace('*', '') + (isWindows ? '' : '/') + componentDir
-    console.log({ componentPath })
     const docsFileContent = fs.readFileSync(
       path.join(componentPath, 'docs.mdx'),
       'utf8'
@@ -169,9 +162,11 @@ function generateMetadataFile(components, docsFiles) {
     // We can't just stringify here, because we need eg
     // src: Button, <<< Button NOT in quotes
     acc += `  '${component.name}': {
-      path: '${unixify(component.path)}',
-      docsPath: '${unixify(path.join(component.path, 'docs.mdx'))}',
-      propsPath: '${unixify(path.join(component.path, 'props.js'))}',
+      path: '${normalizeToUnixPath(component.path)}',
+      docsPath: '${normalizeToUnixPath(path.join(component.path, 'docs.mdx'))}',
+      propsPath: '${normalizeToUnixPath(
+        path.join(component.path, 'props.js')
+      )}',
       slug: '${component.slug}',
       exports: ${component.name}Exports,
       data: ${JSON.stringify(component.data, null, 2)}

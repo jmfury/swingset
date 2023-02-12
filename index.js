@@ -4,7 +4,7 @@
  */
 
 const path = require('path')
-const unixify = require('unixify')
+const normalizeToUnixPath = require('./utils/normalize-to-unix-path')
 
 const isWindows = process.platform === 'win32'
 
@@ -26,17 +26,16 @@ function withSwingset(pluginOptions = {}) {
        * @returns
        */
       webpack(config, options) {
-        console.log('config.context', config.context)
-        console.log('is windows', isWindows)
         // normalize componentsRoot path
-        const componentsRootGlob = `${isWindows ? '' : ''}${unixify(
+        const componentsRootGlob = normalizeToUnixPath(
           path.resolve(
-            unixify(config.context),
+            normalizeToUnixPath(config.context),
             pluginOptions.componentsRoot
               ? pluginOptions.componentsRoot
               : 'components/*'
           )
-        )}`
+        )
+
         const componentsRootSystemPath = path.resolve(
           config.context,
           pluginOptions.componentsRoot
@@ -44,18 +43,16 @@ function withSwingset(pluginOptions = {}) {
             : 'components/*'
         )
 
-        console.log({ componentsRootSystemPath, componentsRootGlob })
         pluginOptions.componentsRoot = componentsRootGlob
         pluginOptions.componentsRootSystemPath = componentsRootSystemPath
 
         // normalize docsRoot path
-        const docsRootPath = `${isWindows ? '' : ''}${unixify(
+        const docsRootPath = normalizeToUnixPath(
           path.resolve(
             config.context,
             pluginOptions.docsRoot ? pluginOptions.docsRoot : 'docs/*'
           )
-        )}`
-        console.log({ docsRootPath })
+        )
         pluginOptions.docsRoot = docsRootPath
         //
         const loaderPath = path.join(__dirname, 'components-loader.js')
