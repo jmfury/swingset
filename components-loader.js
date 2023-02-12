@@ -39,11 +39,9 @@ module.exports = function swingsetComponentsLoader() {
 
   // add components directory as a webpack dependency
   this.addContextDependency(
-    path.normalize(
-      isWindows
-        ? pluginOptions.componentsRootSystemPath.split('*')[0]
-        : pluginOptions.componentsRoot.split('*')[0]
-    )
+    isWindows
+      ? pluginOptions.componentsRootSystemPath.split('*')[0]
+      : pluginOptions.componentsRoot.split('*')[0]
   )
   const componentsWithNames = formatComponentsWithNames(
     componentFolderNames,
@@ -160,7 +158,8 @@ function formatComponentsWithNames(components, systemBasePath) {
  */
 function generateMetadataFile(components, docsFiles) {
   const imports = components.reduce((memo, component) => {
-    memo += `import * as ${component.name}Exports from '${unixify(
+    // Here we need to normalize path, but not clobber drive e.g. 'C:\' on Windows
+    memo += `import * as ${component.name}Exports from '${normalizeToUnixPath(
       component.path
     )}'\n`
     return memo
@@ -192,4 +191,8 @@ function generateMetadataFile(components, docsFiles) {
   contents += `export const docs = ${JSON.stringify(docsData, null, 2)}\n`
 
   return contents
+}
+
+function normalizeToUnixPath(str) {
+  return str.replace(/\\/g, '/')
 }
