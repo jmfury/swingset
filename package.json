@@ -19,8 +19,7 @@
     "query-string": "^7.1.1",
     "react-live": "^3.0.0",
     "require-from-string": "^2.0.2",
-    "slugify": "^1.6.0",
-    "unixify": "^1.0.0"
+    "slugify": "^1.6.0"
   },
   "devDependencies": {
     "@changesets/changelog-github": "^0.4.7",
